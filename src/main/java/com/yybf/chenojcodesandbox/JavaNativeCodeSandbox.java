@@ -9,8 +9,6 @@ import com.yybf.chenojcodesandbox.model.ExecuteCodeRequest;
 import com.yybf.chenojcodesandbox.model.ExecuteCodeResponse;
 import com.yybf.chenojcodesandbox.model.ExecuteMessage;
 import com.yybf.chenojcodesandbox.model.JudgeInfo;
-import com.yybf.chenojcodesandbox.security.DefaultSecurityManager;
-import com.yybf.chenojcodesandbox.security.DenySecurityManager;
 import com.yybf.chenojcodesandbox.utils.ProcessUtils;
 
 import java.io.File;
@@ -32,33 +30,31 @@ public class JavaNativeCodeSandbox implements CodeSandbox {
 
     public static final long TIME_OUT = 5000L;
 
-    // volatile 修饰符确保了多线程环境下对这个变量的可见性，
-    // 即当一个线程修改了这个变量的值时，其他线程能够立即看到这个变化。
-    volatile boolean isThreadRunning = true;
-
     private static final String SECURITY_MANAGER_PATH = "D:\\resources\\idea_code\\YuPi\\ChenOJ\\chenoj-code-sandbox\\src\\main\\resources\\testCode\\security";
 
     private static final String SECURITY_MANAGER_CLASS_NAME = "MySecurityManager";
 
 
     // 程序中字段黑名单
-    public static final List<String> blackList = Arrays.asList("Files","exec");
+    public static final List<String> blackList = Arrays.asList("Files", "exec");
 
     public static final WordTree WORD_TREE;
+
     // 初始化字典树
     static {
         WORD_TREE = new WordTree();
         WORD_TREE.addWords(blackList);
     }
+
     public static void main(String[] args) {
         JavaNativeCodeSandbox javaNativeCodeSandbox = new JavaNativeCodeSandbox();
         ExecuteCodeRequest executeCodeRequest = new ExecuteCodeRequest();
         executeCodeRequest.setInputList(Arrays.asList("1 2", "114 514"));
         // hutool工具类中的一个可以直接访问到resource目录中文件的工具类
-//        String code = ResourceUtil.readStr("testCode/simpleComputeArgs/Main.java", StandardCharsets.UTF_8);
+        String code = ResourceUtil.readStr("testCode/simpleComputeArgs/Main.java", StandardCharsets.UTF_8);
 
 //        String code = ResourceUtil.readStr("testCode/unsafeCode/SleepError.java", StandardCharsets.UTF_8);
-        String code = ResourceUtil.readStr("testCode/unsafeCode/MemoryError.java", StandardCharsets.UTF_8);
+//        String code = ResourceUtil.readStr("testCode/unsafeCode/MemoryError.java", StandardCharsets.UTF_8);
 //        String code = ResourceUtil.readStr("testCode/unsafeCode/RunFileError.java", StandardCharsets.UTF_8);
         /*
         通过交互式将用例传递给程序
@@ -81,7 +77,7 @@ public class JavaNativeCodeSandbox implements CodeSandbox {
 
         // 校验代码中是否包含黑名单中的命令
         FoundWord foundWord = WORD_TREE.matchWord(code);
-        if(foundWord != null){
+        if (foundWord != null) {
             System.out.println("找到了违禁词：" + foundWord.getFoundWord());
             return null;
         }
@@ -123,33 +119,29 @@ public class JavaNativeCodeSandbox implements CodeSandbox {
             // -Xmx256m -- 指定JVM的空间为256M
             // -Dfile.encoding=UTF-8 指定编码为UTF-8
             // %s -Djava.security.manager=%s 这个表示在指定的程序中添加指定的权限校验
-            String runCmd = String.format("java -Xmx256m -Dfile.encoding=UTF-8 -cp %s;%s -Djava.security.manager=%s Main %s", userCodeParentPath, SECURITY_MANAGER_PATH, SECURITY_MANAGER_CLASS_NAME, inputArgs);
+//            String runCmd = String.format("java -Xmx256m -Dfile.encoding=UTF-8 -cp %s;%s -Djava.security.manager=%s Main %s", userCodeParentPath, SECURITY_MANAGER_PATH, SECURITY_MANAGER_CLASS_NAME, inputArgs);
+            String runCmd = String.format("java -Xmx256m -Dfile.encoding=UTF-8 -cp %s Main %s", userCodeParentPath, inputArgs);
             try {
                 Process runProcess = Runtime.getRuntime().exec(runCmd);
 
                 // 开启一个子线程，来防止执行程序的线程超时
 
-                Thread thread = new Thread(() -> {
+                new Thread(() -> {
                     try {
-                        while(isThreadRunning){
-                            Thread.sleep(TIME_OUT);
-                            runProcess.destroy();
-                            if (!runProcess.isAlive()) {
-                                System.out.println("超时了，头给你炫掉！");
-                            }
+                        System.out.println("-----------------");
+                        Thread.sleep(TIME_OUT);
+                        if (runProcess.isAlive()) {
+                            System.out.println("超时了，头给你炫掉！");
                         }
+                        runProcess.destroy();
                     } catch (Exception e) {
                         System.out.println(getResponse(e));
                     }
-                });
-                thread.start();
+                }).start();
 
                 ExecuteMessage executeMessage = ProcessUtils.runProcessAndGetMessage(runProcess, "运行");
                 System.out.println("程序执行时间：" + executeMessage.getTime());
 
-                if(isThreadRunning){
-                    isThreadRunning = false;
-                }
 
                 /*
                 通过交互式将用例传递给程序
