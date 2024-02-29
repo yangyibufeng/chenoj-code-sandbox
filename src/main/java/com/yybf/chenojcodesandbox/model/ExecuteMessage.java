@@ -21,4 +21,7 @@ public class ExecuteMessage {
 
     //表示程序执行时间
     private Long time;
+
+    //表示程序占用内存
+    private Long memory;
 }
