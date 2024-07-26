@@ -21,7 +21,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 通过复用模板来编写通过Docker实现代码沙箱
@@ -113,8 +112,16 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
         // 用于收集输出信息
         List<ExecuteMessage> executeMessageList = new ArrayList<>();
 
+        final String[] message = {null}; // 程序的输出
+        final String[] errorMessage = {null}; // 程序的报错
+        final long[] maxMemory = {0L}; // 程序占用的最大内存
+        long time = 0L; // 程序运行时间
+
         // docker exec eager_germain java -cp /app Main 114 514
         for (String inputArgs : inputList) {
+            // 创建一个ExecuteMessage类方便获取信息
+            ExecuteMessage executeMessage = new ExecuteMessage();
+
             StopWatch stopWatch = new StopWatch();
             String[] inputArgsArray = inputArgs.split(" ");
             String[] cmdArray = ArrayUtil.append(new String[]{"java", "-cp", "/app", "Main"}, inputArgsArray);
@@ -128,14 +135,10 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
                     .withAttachStdout(true)
                     .exec();
             System.out.println("创建执行命令：" + execCreateCmdResponse);
-            // 创建一个ExecuteMessage类方便获取信息
-            ExecuteMessage executeMessage = new ExecuteMessage();
-            final String[] message = {null};
-            final String[] errorMessage = {null};
-            long time = 0L;
+
             final boolean[] timeout = {true};
 
-            String id = execCreateCmdResponse.getId();
+            String execId = execCreateCmdResponse.getId();
             ExecStartResultCallback execStartResultCallback = new ExecStartResultCallback() {
                 @Override
                 public void onComplete() {
@@ -144,14 +147,15 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
                     timeout[0] = false;
                     System.out.println("timeout is:" + Arrays.toString(timeout));
 
+                    /** 装配程序的输出和错误输出 */
                     // 检查message和errorMessage是否为空
                     // 用来兼容print这种类型
                     if (executeMessage.getMessage() == null && executeMessage.getErrorMessage() == null) {
                         // 如果message和errorMessage都为空，说明可能是System.out.print()的输出
                         if (outputBuffer!= null) {
-                            String completeOutput = outputBuffer.toString().trim();
-                            System.out.println("print - 完整输出：" + completeOutput);
-                            executeMessage.setMessage(completeOutput);
+                            message[0] = outputBuffer.toString().trim();
+                            System.out.println("print - 完整输出：" + message[0]);
+                            executeMessage.setMessage(message[0]);
                         }
                     }
                     super.onComplete();
@@ -176,9 +180,9 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
 
                         // 检查是否有换行符，表示一个完整的输出
                         if (output.endsWith("\n")) {
-                            String completeOutput = outputBuffer.toString().trim();
-                            System.out.println("完整输出：" + completeOutput);
-                            executeMessage.setMessage(completeOutput);
+                            message[0] = outputBuffer.toString().trim();
+                            System.out.println("完整输出：" + message[0]);
+                            executeMessage.setMessage(message[0]);
                             outputBuffer.setLength(0); // 清空缓冲区
                         }
                     } else if (StreamType.STDERR.equals(streamType)) {
@@ -190,7 +194,6 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
                 }
             };
 
-            final long[] maxMemory = {0L};
 
             StatsCmd statsCmd = dockerClient.statsCmd(containerId); //创建监控
             ResultCallback<Statistics> statisticsResultCallback = statsCmd.exec(new ResultCallback<Statistics>() {
@@ -225,10 +228,10 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
 
             try {
                 stopWatch.start();
-                dockerClient.execStartCmd(id)
+                dockerClient.execStartCmd(execId)
                         .exec(execStartResultCallback)
-                        .awaitCompletion(TIME_OUT, TimeUnit.MICROSECONDS); // 设置超时时间
-//                        .awaitCompletion(); // 设置超时时间
+                        .awaitCompletion(); // 设置超时时间
+//                        .awaitCompletion(TIME_OUT, TimeUnit.MICROSECONDS); // 设置超时时间
                 stopWatch.stop(); // 停止计时
                 time = stopWatch.getLastTaskTimeMillis();
                 log.info("time is:{}", time);
@@ -243,11 +246,11 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
             log.info("整理之前的返回信息：{}", executeMessageList);
 
 
-            executeMessage.setMessage(message[0]);
-            executeMessage.setErrorMessage(errorMessage[0]);
+//            executeMessage.setMessage(message[0]);
+//            executeMessage.setErrorMessage(errorMessage[0]);
             executeMessage.setTime(time);
-            System.out.println("maxmemory"+maxMemory[0]);
             executeMessage.setMemory(maxMemory[0]);
+
             executeMessageList.add(executeMessage);
             log.info("返回信息：{}", executeMessageList);
 
@@ -268,8 +271,8 @@ public class JavaDockerCodeSandbox extends JavaCodeSandboxTemplate {
         return executeMessageList;
     }
 
-    @Override
-    public ExecuteCodeResponse executeCode(ExecuteCodeRequest executeCodeRequest) {
-        return super.executeCode(executeCodeRequest);
-    }
+//    @Override
+//    public ExecuteCodeResponse executeCode(ExecuteCodeRequest executeCodeRequest) {
+//        return super.executeCode(executeCodeRequest);
+//    }
 }
