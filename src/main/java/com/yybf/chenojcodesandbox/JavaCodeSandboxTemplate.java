@@ -1,6 +1,7 @@
 package com.yybf.chenojcodesandbox;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.resource.ResourceUtil;
 import cn.hutool.core.util.StrUtil;
 import com.yybf.chenojcodesandbox.model.ExecuteCodeRequest;
 import com.yybf.chenojcodesandbox.model.ExecuteCodeResponse;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,7 +34,6 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
     public static String USER_CODE_PARENT_PATH = "";
 
     public static final long TIME_OUT = 5000L;
-
 
     @Override
     public ExecuteCodeResponse executeCode(ExecuteCodeRequest executeCodeRequest) {
@@ -188,6 +189,7 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
 
         List<String> outputList = new ArrayList<>();
         long maxTime = 0;
+        long maxMemory = 0;
         for (ExecuteMessage executeMessage : executeMessageList) {
             String errorMessage = executeMessage.getErrorMessage();
             // 如果有错误信息 -- 表示运行时出现错误
@@ -199,8 +201,12 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
             }
             outputList.add(executeMessage.getMessage());
             Long time = executeMessage.getTime();
+            Long memory = executeMessage.getMemory();
             if (time != null) {
                 maxTime = Math.max(time, maxTime);
+            }
+            if(memory != null){
+                maxMemory = Math.max(memory,maxMemory);
             }
         }
         // 正常运行
@@ -209,7 +215,7 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
         }
         executeCodeResponse.setOutputList(outputList);
         JudgeInfo judgeInfo = new JudgeInfo();
-//        judgeInfo.setMemory();
+        judgeInfo.setMemory(maxMemory);
         judgeInfo.setTime(maxTime);
         executeCodeResponse.setJudgeInfo(judgeInfo);
 
