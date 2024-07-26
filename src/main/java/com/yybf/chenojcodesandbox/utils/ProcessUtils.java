@@ -39,25 +39,28 @@ public class ProcessUtils {
 
             executeMessage.setExitValue(exitValue);
 
-            // 分批获取进程的正常输出
+            /* 分批获取进程的正常输出 */
             // 会将控制台的信息写到进程的输入流中，所以先获取输入流，
             // 然后再创建一个输入流读取器读取输入流，最后在分块读取输入流
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(runProcess.getInputStream()));
-            List<String> outputStrList = new ArrayList<>();
+            // 将分块读取的信息拼装起来
+            StringBuilder compileOutputStringBuilder = new StringBuilder();
             // 逐行读取
             String compileOutputLine;
-            /* 这里逐行读取的时候会在最后加上一个换行符，可能就是docker代码沙箱中执行线程调用两次onNext的原因 */
-//            while ((compileOutputLine = bufferedReader.readLine()) != null) {
-//                compileOutputStringBuilder.append(compileOutputLine).append("\n");
-//            }
-            /*修改方法：先用一个arraylist数组存储每一个样例的输出，然后再用 Apache Commons Lang 库的 StringUtils 类中的join方法将
-            数组中的元素被指定字符串分割之后再生成一个新的字符串*/
+            /*while ((compileOutputLine = bufferedReader.readLine()) != null) {
+                compileOutputStringBuilder.append(compileOutputLine).append("\n");
+            }
+
+            // 获取正常输入的信息
+            executeMessage.setMessage(compileOutputStringBuilder.toString());*/
+            List<String> outputStrList = new ArrayList<>();
+
             while ((compileOutputLine = bufferedReader.readLine()) != null) {
                 outputStrList.add(compileOutputLine);
             }
 
             // 获取正常输入的信息
-            executeMessage.setMessage(StringUtils.join(outputStrList,"\n"));
+            executeMessage.setMessage(StringUtils.join(outputStrList, "\n"));
 
             // 正常退出
             if (exitValue == 0) {
@@ -76,17 +79,16 @@ public class ProcessUtils {
                 // 会将控制台的信息写到进程的输入流中，所以先获取输入流，
                 // 然后再创建一个输入流读取器读取输入流，最后在分块读取输入流
                 BufferedReader errorBufferedReader = new BufferedReader(new InputStreamReader(runProcess.getErrorStream()));
-
-
-                List<String> errorOutputStrList = new ArrayList<>();
+                // 将分块读取的信息拼装起来
+                StringBuilder errorCompileOutputStringBuilder = new StringBuilder();
                 // 逐行读取
                 String errorCompileOutputLine;
                 while ((errorCompileOutputLine = errorBufferedReader.readLine()) != null) {
-                    errorOutputStrList.add(errorCompileOutputLine);
+                    errorCompileOutputStringBuilder.append(errorCompileOutputLine).append("\n");
                 }
 
                 // 获取异常返回信息
-                executeMessage.setErrorMessage(StringUtils.join(errorOutputStrList,"\n"));
+                executeMessage.setErrorMessage(errorCompileOutputStringBuilder.toString());
             }
 
             stopWatch.stop();

@@ -192,12 +192,12 @@ public class JavaDockerCodeSandboxOld implements CodeSandbox {
 
                 @Override
                 public void onNext(Frame frame) {
-                    System.out.println("调用了运行容器时的回调函数！！！！！！114514");
+//                    System.out.println("调用了运行容器时的回调函数！！！！！！114514");
                     StreamType streamType = frame.getStreamType();
-                    System.out.println("流类型：" + streamType);
+//                    System.out.println("流类型：" + streamType);
 
                     byte[] payload = frame.getPayload();
-                    System.out.println("帧内容：" + new String(payload));
+//                    System.out.println("帧内容：" + new String(payload));
 
                     if (StreamType.STDERR.equals(streamType)) {
                         errorMessage[0] = new String(frame.getPayload());

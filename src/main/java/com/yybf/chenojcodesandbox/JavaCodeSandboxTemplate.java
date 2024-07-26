@@ -17,7 +17,7 @@ import java.util.UUID;
 
 /**
  * @author yangyibufeng
- * @date 2024/3/1
+ * @date 2024/7/22
  * 一个抽象出来的代码沙箱的模板方法类
  */
 @Slf4j
@@ -38,6 +38,7 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
     public ExecuteCodeResponse executeCode(ExecuteCodeRequest executeCodeRequest) {
         // 创建原生的系统级别的安全管理器
 //        System.setSecurityManager(new DefaultSecurityManager());
+        System.out.println("使用了模板方法");
 
         List<String> inputList = executeCodeRequest.getInputList();
         String code = executeCodeRequest.getCode();
@@ -110,6 +111,7 @@ public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
             Process compileProcess = Runtime.getRuntime().exec(compileCmd);
             ExecuteMessage executeMessage = ProcessUtils.runProcessAndGetMessage(compileProcess, "编译");
 //            System.out.println(executeMessage);
+//            log.info("模板方法中的executeMessage：{}",executeMessage);
             if (executeMessage.getExitValue() != 0) {
                 throw new RuntimeException("编译错误");
             }
